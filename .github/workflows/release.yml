@@ -1,39 +1,84 @@
 name: release
 
-# PACKS dist/ AND ATTACHES IT TO A RELEASE.
+# BUILDS THE PANEL AND ATTACHES THE BUNDLE TO A RELEASE, under the asset name easyagent-ext-ui-host
+# fetches.
 #
-# THERE IS NO BUILD STEP, and that is the design: dist/ is the source, so this job's job is to put it
-# in a tarball with a name the install host knows — `ui.tar.gz`, the asset easyagent-ext-ui-host
-# fetches by default.
-#
-# IT CHECKS THE BUNDLE BEFORE PUBLISHING. A release with no index.html installs cleanly into a panel
-# that 404s for everything, and the cause is three layers away by then; the install host refuses such
-# a bundle, but it is better to never publish one.
+# THE TYPES ARE CHECKED AGAINST THE BACKEND'S PROTO, which this repository keeps a byte-identical copy
+# of. A field the panel reads but the extension does not send is a compile error here, in the
+# repository where the fix belongs.
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
-  workflow_dispatch:
+  pull_request:
+
+env:
+  BACKEND: easydev-org/easyagent-sandbox-ext
+  PROTO_PATH: ui/v1/ui.proto
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - run: npm ci --no-audit --no-fund
+
+      # THE COPY IS COMPARED, not trusted. GITHUB_TOKEN scopes to THIS repository, so a private backend
+      # answers 404 whatever header is sent — a check that could never pass is not a check, so an
+      # unreadable backend is a warning with the instruction that fixes it (PROTO_READ_TOKEN).
+      - name: is the copy still the contract?
+        id: drift
+        env:
+          PROTO_READ_TOKEN: ${{ secrets.PROTO_READ_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          tok="${PROTO_READ_TOKEN:-$GH_TOKEN}"
+          url="https://raw.githubusercontent.com/${BACKEND}/main/proto/${PROTO_PATH}"
+          code=$(curl -sS -o /tmp/up.proto -w '%{http_code}' -H "Authorization: Bearer ${tok}" "$url" || true)
+          if [ "$code" != "200" ]; then
+            echo "same=unknown" >> "$GITHUB_OUTPUT"
+            echo "::warning::cannot read ${BACKEND}'s proto (HTTP $code); set PROTO_READ_TOKEN to enable the drift check"
+            exit 0
+          fi
+          if diff -q /tmp/up.proto "proto/${PROTO_PATH}" >/dev/null; then
+            echo "same=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "same=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::the backend's proto changed; taking theirs"
+            diff -u "proto/${PROTO_PATH}" /tmp/up.proto || true
+            cp /tmp/up.proto "proto/${PROTO_PATH}"
+          fi
+
+      - name: generate
+        run: |
+          set -euo pipefail
+          export PATH="${PWD}/node_modules/.bin:${PATH}"
+          cd proto && buf lint && buf generate
+
+      - run: npm run check
+      - run: npm run build
 
       - name: the bundle is complete
         run: |
           set -euo pipefail
           test -f dist/index.html || { echo "::error::dist/index.html is missing"; exit 1; }
-          test -f dist/ui.json     || { echo "::error::dist/ui.json is missing — the console would show no card"; exit 1; }
-          # EVERY MODULE THE ENTRY POINT IMPORTS MUST BE HERE. A missing screen.js is a panel that
-          # loads and then throws, which reads as a broken extension rather than a broken release.
-          for m in $(grep -oE "from '\./[^']+'" dist/app.js | sed "s/from '\.\///;s/'//"); do
-            test -f "dist/$m" || { echo "::error::dist/app.js imports ./$m, which is not in the bundle"; exit 1; }
-          done
-          python3 -c "import json,sys; d=json.load(open('dist/ui.json')); assert d.get('title'), 'ui.json has no title'; print('ui.json ok:', d['title'])"
+          test -f dist/ui.json     || { echo "::error::dist/ui.json is missing"; exit 1; }
+          # THE ASSETS MUST POINT AT THE MOUNT. A bundle built for another base is every asset 404ing,
+          # which a browser reports as a blank panel with nothing in the log naming the file.
+          grep -q 'src="/ext/sandbox/assets/' dist/index.html || {
+            echo "::error::the bundle does not reference /ext/sandbox/assets — wrong vite base"
+            grep -o 'src="[^"]*"' dist/index.html | head -5; exit 1; }
+          python3 -c "import json; d=json.load(open('dist/ui.json')); assert d.get('title'); print('ui.json ok:', d['title'])"
 
       - name: pack
         run: |
@@ -55,3 +100,27 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" ui.tar.gz \
             --title "${GITHUB_REF_NAME}" \
             --notes "The sandbox panel, as installed by easyagent-ext-ui-host."
+
+      # A DRIFTED COPY BECOMES A PULL REQUEST rather than a push: the diff is the thing to read, and a
+      # change to the contract should be signed off rather than discovered.
+      - name: open the pull request
+        if: steps.drift.outputs.same == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then echo "nothing to commit"; exit 0; fi
+          branch="proto/sync-$(date +%Y%m%d-%H%M%S)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add -A
+          {
+            echo "chore: regenerate the client from the backend's proto"
+            echo
+            echo "The .proto here is a copy of ${BACKEND}'s and no longer matched. Ingested theirs and"
+            echo "regenerated, so client and server cannot disagree about a field name."
+          } > /tmp/msg.txt
+          git commit -F /tmp/msg.txt
+          git push -u origin "$branch"
+          gh pr create --title "chore: sync the proto from the backend" --body "Opened by CI because \`${BACKEND}\`'s \`proto/${PROTO_PATH}\` changed."

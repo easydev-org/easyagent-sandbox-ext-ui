@@ -1,0 +1,8 @@
+version: v2
+# Generated from the BACKEND'S .proto, kept byte-identical by CI.
+plugins:
+  - local: protoc-gen-es
+    out: ../src/gen
+    opt:
+      - target=ts
+      - import_extension=js

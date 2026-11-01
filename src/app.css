@@ -1,0 +1,92 @@
+/* The palette mirrors the console's, so an embedded panel does not look like a different product. */
+:root {
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --card: #f9fafb;
+  --primary: #2563eb;
+  --danger: #dc2626;
+  --ok: #1a7f37;
+  /* A terminal is dark in both themes, because that is what a terminal looks like and because
+     coloured output assumes a dark background. */
+  --term: #0d1117;
+  --term-fg: #c9d1d9;
+}
+
+:root[data-theme='dark'] {
+  --bg: #0f1115;
+  --fg: #e6e8eb;
+  --muted: #9aa3ad;
+  --border: #262b33;
+  --card: #161a20;
+  --primary: #60a5fa;
+  --danger: #f87171;
+  --ok: #4ade80;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    13px/1.5 system-ui,
+    -apple-system,
+    'Segoe UI',
+    'PingFang SC',
+    'Microsoft YaHei',
+    'Noto Sans CJK SC',
+    ui-sans-serif,
+    sans-serif;
+}
+
+/* A host pane: it fills what it is given and scrolls inside its own columns, not the page. */
+#app {
+  height: 100%;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.micro {
+  font-size: 11px;
+}
+
+.pill {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 5px;
+  color: var(--muted);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.pill.ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.pill.bad {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.pill.run {
+  border-color: var(--primary);
+  color: var(--primary);
+}

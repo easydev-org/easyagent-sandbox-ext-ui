@@ -1,42 +1,47 @@
 # easyagent-sandbox-ext-ui
 
-The sandbox extension's panel: machines, their jobs, and one job's output streaming live.
+The sandbox extension's panel: the machines a tenant configured, their jobs, one job's output, and the
+machine's live screen.
 
-**A separate project, installed from a release.** The extension's Go binary no longer embeds a UI; it
-is a backend, and `easyagent-ext-ui-host` serves every panel at once — installing them from this
-repository's releases and answering the console's discovery probe from their `ui.json`.
-
-## No build step, on purpose
-
-`dist/` IS THE SOURCE. Four files — an HTML document, two ES modules, an icon — served as they are.
-The panel lists machines, lists their jobs, and streams one job's output over SSE; a bundler would be
-more moving parts than the feature, and the extension already made that call before this repository
-existed.
-
-That is why the release is a tarball of `dist/` rather than a build product: what is in git is what
-ships.
+**A separate project, installed from a release.** The extension is a backend; `easyagent-ext-ui-host`
+serves every panel at once, installing them from this repository's releases and answering the console's
+discovery probe from their `ui.json`.
 
 ## The contract
 
-`dist/ui.json` is what the console reads to describe the panel — title, per-language descriptions,
-icon path. It lives HERE rather than in the extension's Go code, so a wording change is a panel
-release and not a backend deploy.
+`proto/ui/v1/ui.proto` defines the API. The Go backend generates its server from the same file, and
+`src/gen/` here is generated from it — so a field the panel reads but the extension does not send is a
+compile error rather than an empty list.
 
-`app.js` derives its API base from where it is mounted:
+`proto/ui/v1/ui.proto` is a **copy** of the backend's. CI compares it, regenerates, and opens a pull
+request when they differ.
 
-```js
-const p = location.pathname.replace(/\/+$/, '')   // /ext/sandbox
-const API = `${p}/api/`                            // /ext/sandbox/api/
-```
+| RPC | |
+|---|---|
+| `ListSandboxes` | the tenant's machines, and whether each answered |
+| `ListJobs` | one machine's jobs — asked of the DAEMON, which is why old ones still appear |
+| `GetJobOutput` | one job's output, for a finished job |
+| `WatchJob` | one job's output, **streamed** (this replaced Server-Sent Events) |
+| `AuthorizeDesktop` | a signed, short-lived URL for the screen |
 
-That is what makes the panel work under `ext-ui-host` without knowing it: the host serves
-`/ext/sandbox/` from this bundle and forwards `/ext/sandbox/api/` to the extension.
+## The screen is an iframe, not a canvas
 
-## Releasing
+The panel used to decode H.264 itself with WebCodecs and paint a canvas. It drew frames correctly and
+gave the reader nothing to do with them — no click, no key, no zoom.
 
-Tag it. CI packs `dist/` into `ui.tar.gz` and attaches it to the release; `ext-ui-host` installs that.
+`easystream-webui` has all of that, and the worker already serves it at `/desktop/`. So the panel asks
+`AuthorizeDesktop` for a URL and embeds that.
+
+**WHY THE URL IS SIGNED.** An iframe navigation cannot carry an `Authorization` header — the browser's
+rule — so the permission has to travel in the URL. `AuthorizeDesktop` checks that the machine belongs
+to the caller and returns an HMAC over (tenant, machine, expiry), which the extension's proxy verifies
+before it forwards a byte. Links expire in five minutes.
+
+## Development
 
 ```sh
-git tag -a v0.1.0 -m "v0.1.0: the sandbox panel"
-git push origin v0.1.0
+npm install
+npm run proto     # regenerate src/gen from the proto
+npm run check     # svelte-check
+npm run build     # emits dist/, which easyagent-ext-ui-host serves
 ```
