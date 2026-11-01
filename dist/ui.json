@@ -1,0 +1,8 @@
+{
+  "title": "Sandboxes",
+  "descriptions": {
+    "en": "Machines the agent can drive: shell, files, jobs, and their screens.",
+    "zh": "agent 可操作的机器：命令行、文件、任务，以及实时画面。"
+  },
+  "icon": "/icon.svg"
+}
