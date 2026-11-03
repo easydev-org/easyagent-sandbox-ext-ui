@@ -17,6 +17,12 @@ env:
   BACKEND: easydev-org/easyagent-sandbox-ext
   PROTO_PATH: ui/v1/ui.proto
 
+permissions:
+  contents: write
+  # `npm ci` resolves @easydev-org/ext-ui from npm.pkg.github.com. A private package needs an
+  # authenticated read, and GITHUB_TOKEN is enough — no PAT, nothing to rotate.
+  packages: read
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,6 +37,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - run: npm ci --no-audit --no-fund
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # THE COPY IS COMPARED, not trusted. GITHUB_TOKEN scopes to THIS repository, so a private backend
       # answers 404 whatever header is sent — a check that could never pass is not a check, so an

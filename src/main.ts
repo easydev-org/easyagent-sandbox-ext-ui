@@ -2,17 +2,22 @@ import { mount } from 'svelte'
 
 import App from './App.svelte'
 import './app.css'
+import { connectToHost } from '@easydev-org/ext-ui'
 
-// THEME, kept in step with the console.
-//
-// index.html applies `?theme=` before first paint; this listener covers a switch WHILE the panel is
-// open. Without it a reader who toggles the console's theme keeps the old palette until a reload.
-window.addEventListener('message', ev => {
-  const d = ev.data as { type?: string; theme?: string } | null
-  if (d?.type === 'easyagent:theme' && (d.theme === 'dark' || d.theme === 'light')) {
-    document.documentElement.dataset['theme'] = d.theme
-  }
-})
+/**
+ * THE THEME, FROM THE CONTRACT RATHER THAN BY HAND.
+ *
+ * This used to be a bare `window.addEventListener` on `easyagent:theme` with the message name spelled
+ * out — a second copy of a contract that lives in `@easydev-org/ext-ui`, in a repository whose CI could
+ * not see the first one. A rename would have broken this panel silently: the listener stops matching,
+ * and a panel that keeps its loaded palette looks like a styling choice rather than a bug.
+ *
+ * `connectToHost` also ANNOUNCES READINESS, which the hand-written version did not. Nothing broke,
+ * because the console broadcasts to every frame on every change — but that is the console's current
+ * behaviour, not a promise, and a panel that depends on it stops working the day the console sends only
+ * to frames that said they were ready.
+ */
+connectToHost()
 
 const target = document.getElementById('app')
 if (!target) throw new Error('#app is missing from index.html')
