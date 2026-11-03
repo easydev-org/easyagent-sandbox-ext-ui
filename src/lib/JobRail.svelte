@@ -101,12 +101,12 @@
 
   .state {
     padding: 12px 8px;
-    color: var(--muted);
+    color: var(--muted-foreground);
     text-align: center;
   }
 
   .state.err {
-    color: var(--danger);
+    color: var(--destructive);
   }
 
   @media (max-width: 720px) {
