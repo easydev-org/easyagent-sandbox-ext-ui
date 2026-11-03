@@ -30,7 +30,12 @@
     </div>
   {:else}
     {#each sandboxes as s (s.name)}
-      <button type="button" class="row" class:active={s.name === sbName} onclick={() => onselect(s.name)}>
+      <button
+        type="button"
+        class="row"
+        class:active={s.name === sbName}
+        onclick={() => onselect(s.name)}
+      >
         <span class="name">{s.name}</span>
         <span class="micro muted">{subtitle(s)}</span>
         <span class="micro">

@@ -135,7 +135,10 @@
     watcher = ac
     streaming = true
     try {
-      const stream = client.watchJob({ session: SESSION, sandbox: sbName, jobId: job.id }, { signal: ac.signal })
+      const stream = client.watchJob(
+        { session: SESSION, sandbox: sbName, jobId: job.id },
+        { signal: ac.signal },
+      )
       for await (const ev of stream) {
         switch (ev.event.case) {
           case 'output':
@@ -154,7 +157,8 @@
       }
     } catch (e) {
       // An abort is this panel's own doing, not a failure worth reporting.
-      if (!ac.signal.aborted) output += `\n[stream failed: ${e instanceof Error ? e.message : String(e)}]\n`
+      if (!ac.signal.aborted)
+        output += `\n[stream failed: ${e instanceof Error ? e.message : String(e)}]\n`
     } finally {
       if (watcher === ac) {
         watcher = null
@@ -228,7 +232,13 @@
          and a Wayland box can have a screen and no xa11y. -->
     <ScreenPane {sbName} headless={true} os={current.os} url="" error="" />
   {:else if view === 'screen'}
-    <ScreenPane {sbName} headless={false} os={current?.os ?? ''} url={desktopURL} error={desktopError} />
+    <ScreenPane
+      {sbName}
+      headless={false}
+      os={current?.os ?? ''}
+      url={desktopURL}
+      error={desktopError}
+    />
   {:else}
     <OutputPane {jobId} {output} {shownLines} {totalLines} {streaming} />
   {/if}
