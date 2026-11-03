@@ -12,7 +12,7 @@
   "dependencies": {
     "@connectrpc/connect": "^2.3.0",
     "@connectrpc/connect-web": "^2.3.0",
-    "@easydev-org/ext-ui": "^0.2.1"
+    "@easydev-org/ext-ui": "^0.3.0"
   },
   "devDependencies": {
     "@bufbuild/protobuf": "^2.16.0",

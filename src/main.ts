@@ -1,6 +1,9 @@
 import { mount } from 'svelte'
 
 import App from './App.svelte'
+// The shared palette first, then this panel's own additions — which override nothing but the terminal
+// colours and the mount point.
+import '@easydev-org/ext-ui/styles'
 import './app.css'
 import { connectToHost } from '@easydev-org/ext-ui'
 

@@ -76,11 +76,11 @@
   .state {
     margin: auto;
     padding: 24px;
-    color: var(--muted);
+    color: var(--muted-foreground);
     text-align: center;
   }
 
   .state.err {
-    color: var(--danger);
+    color: var(--destructive);
   }
 </style>
