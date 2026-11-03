@@ -73,6 +73,15 @@ jobs:
           export PATH="${PWD}/node_modules/.bin:${PATH}"
           cd proto && buf lint && buf generate
 
+      # FORMAT AND LINT, BEFORE THE TYPE CHECK. `npm run build` succeeds on misformatted code, so
+      # without this step a formatting problem has no signal at all: it surfaces as churn in a later
+      # diff.
+      #
+      # IT FAILS RATHER THAN FIXING. A CI job that rewrites files and passes leaves the diff on a
+      # runner nobody reads; the author has to run `npm run format:fix` and see it in their own diff.
+      - name: format
+        run: npm run format:check
+
       - run: npm run check
       - run: npm run build
 
