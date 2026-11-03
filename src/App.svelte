@@ -12,8 +12,7 @@
   import { onMount } from 'svelte'
   import type { Job, Sandbox } from './gen/ui/v1/ui_pb.js'
   import { client, SESSION } from './client.js'
-  import MachineRail from './lib/MachineRail.svelte'
-  import JobRail from './lib/JobRail.svelte'
+  import PickerBar from './lib/PickerBar.svelte'
   import ScreenPane from './lib/ScreenPane.svelte'
   import OutputPane from './lib/OutputPane.svelte'
 
@@ -212,18 +211,27 @@
   const current = $derived(sandboxes.find(s => s.name === sbName) ?? null)
 </script>
 
-<div class="panel">
-  <MachineRail {sandboxes} {sbName} {listError} onselect={select} />
-  <JobRail {jobs} {sbName} {jobId} {jobError} onselect={openJob} />
+<main class="panel">
+  <!-- ONE COLUMN. The machine and the job are picked in a bar across the top, and everything below is
+       the thing being read — the desktop or the output. Two fixed-width rails used to sit beside it,
+       which in the console's half-width pane left the content about a third of the width. -->
+  <PickerBar
+    {sandboxes}
+    {sbName}
+    {listError}
+    {jobs}
+    {jobId}
+    {jobError}
+    onselectSandbox={select}
+    onselectJob={openJob}
+  />
 
-  <main>
-    {#if sbName === ''}
-      <div class="state">Pick a machine.</div>
-    {:else}
-      {@render pane()}
-    {/if}
-  </main>
-</div>
+  {#if sbName === ''}
+    <div class="state">Pick a machine.</div>
+  {:else}
+    {@render pane()}
+  {/if}
+</main>
 
 {#snippet pane()}
   {#if current?.screen === false}
@@ -247,15 +255,8 @@
 <style>
   .panel {
     display: flex;
-    height: 100%;
-    min-height: 0;
-  }
-
-  main {
-    display: flex;
-    min-width: 0;
-    flex: 1;
     flex-direction: column;
+    height: 100%;
     min-height: 0;
   }
 
@@ -264,12 +265,5 @@
     padding: 24px;
     color: var(--muted-foreground);
     text-align: center;
-  }
-
-  /* TWO RAILS BECOME ONE ON A NARROW PANEL, the way the console's own pages do. */
-  @media (max-width: 720px) {
-    .panel {
-      flex-direction: column;
-    }
   }
 </style>
