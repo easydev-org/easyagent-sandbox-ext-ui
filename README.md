@@ -16,13 +16,13 @@ compile error rather than an empty list.
 `proto/ui/v1/ui.proto` is a **copy** of the backend's. CI compares it, regenerates, and opens a pull
 request when they differ.
 
-| RPC | |
-|---|---|
-| `ListSandboxes` | the tenant's machines, and whether each answered |
-| `ListJobs` | one machine's jobs — asked of the DAEMON, which is why old ones still appear |
-| `GetJobOutput` | one job's output, for a finished job |
-| `WatchJob` | one job's output, **streamed** (this replaced Server-Sent Events) |
-| `AuthorizeDesktop` | a signed, short-lived URL for the screen |
+| RPC                |                                                                              |
+| ------------------ | ---------------------------------------------------------------------------- |
+| `ListSandboxes`    | the tenant's machines, and whether each answered                             |
+| `ListJobs`         | one machine's jobs — asked of the DAEMON, which is why old ones still appear |
+| `GetJobOutput`     | one job's output, for a finished job                                         |
+| `WatchJob`         | one job's output, **streamed** (this replaced Server-Sent Events)            |
+| `AuthorizeDesktop` | a signed, short-lived URL for the screen                                     |
 
 ## The screen is an iframe, not a canvas
 

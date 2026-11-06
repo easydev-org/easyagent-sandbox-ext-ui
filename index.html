@@ -9,9 +9,10 @@
       // reach it; the host puts the value in the URL so the page can apply it before it renders
       // anything. Doing this inside Svelte would flash light in dark mode for the length of a module
       // load — visible, and on every open.
-      (() => {
+      ;(() => {
         const q = new URLSearchParams(location.search).get('theme')
-        const dark = q === 'dark' || (q !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+        const dark =
+          q === 'dark' || (q !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
         document.documentElement.dataset.theme = dark ? 'dark' : 'light'
       })()
     </script>

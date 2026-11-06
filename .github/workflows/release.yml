@@ -73,24 +73,30 @@ jobs:
           export PATH="${PWD}/node_modules/.bin:${PATH}"
           cd proto && buf lint && buf generate
 
-      # FORMAT AND LINT, BEFORE THE TYPE CHECK. `npm run build` succeeds on misformatted code, so
-      # without this step a formatting problem has no signal at all: it surfaces as churn in a later
-      # diff.
+      # FORMAT: PRETTIER, AND ONLY PRETTIER.
       #
-      # IT FAILS RATHER THAN FIXING. A CI job that rewrites files and passes leaves the diff on a
-      # runner nobody reads; the author has to run `npm run format:fix` and see it in their own diff.
+      # ONE TOOL OWNS FORMATTING, which is what makes the result predictable. This repository used to split
+      # by file type — biome for .ts/.json, prettier for .svelte — and the two disagreed on line width and
+      # several TypeScript details. Running the wrong one produced a diff the other then rejected, so a
+      # format fix could fail the format check.
+      #
+      # PRETTIER WINS BECAUSE SVELTE LEAVES NO CHOICE: biome cannot format a .svelte file. It parses the
+      # <script> block as a standalone TypeScript file and rewrites that block's indentation while leaving
+      # the markup and <style> untouched, which produces a half-formatted file — worse than none. Prettier
+      # with prettier-plugin-svelte understands all three blocks and their relationship.
+      #
+      # IT FAILS RATHER THAN FIXING. A job that rewrites files and passes leaves the diff on a runner
+      # nobody reads; the author has to run `npm run format:fix` and see it in their own diff.
       - name: format
         run: npm run format:check
 
-      # SVELTE FILES, BECAUSE BIOME CANNOT FORMAT THEM. It parses the <script> block as a standalone
-      # TypeScript file — rewriting that block's indentation while leaving the markup and <style>
-      # untouched — which produces a HALF-FORMATTED file, worse than none. Prettier with
-      # prettier-plugin-svelte understands all three blocks and their relationship.
+      # LINT IS A SEPARATE QUESTION FROM FORMAT, and it stays biome's: "is this code wrong" — an unused
+      # import, an implicit any — rather than "does this code look like the rest".
       #
-      # THIS IS NOT A DUPLICATE OF THE STEP ABOVE. Biome owns .ts and .json; prettier owns .svelte.
-      # Splitting by file type is why the two tools do not fight.
-      - name: format (svelte)
-        run: npm run format:svelte
+      # BIOME'S FORMATTER AND ASSIST ARE OFF in biome.json, so `biome lint` cannot rewrite a file prettier
+      # owns.
+      - name: lint
+        run: npm run lint
 
       - run: npm run check
       - run: npm run build
