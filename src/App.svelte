@@ -15,6 +15,7 @@
   import PickerBar from './lib/PickerBar.svelte'
   import ScreenPane from './lib/ScreenPane.svelte'
   import OutputPane from './lib/OutputPane.svelte'
+  import { onSessionContext, setSelection } from '@easydev-org/ext-ui'
 
   const LIST_MS = 10_000
   const JOBS_MS = 5_000
@@ -179,6 +180,12 @@
     stopStream()
     desktopURL = ''
     desktopError = ''
+    // TELL THE HOST WHAT IS BEING LOOKED AT, under the namespace this panel declares in its ui.json.
+    //
+    // The host does not know what a sandbox is; it stores the string and hands it to every view that
+    // declared the same namespace. That is what lets a second panel — or a future one — open on the
+    // same machine without either extension knowing about the other.
+    setSelection('sandbox', name)
     if (name !== '') {
       void refreshJobs()
       void refreshDesktop(name)
@@ -190,11 +197,35 @@
   }
 
   onMount(() => {
+    // THE HOST'S SELECTION FIRST, WHEN THERE IS ONE.
+    //
+    // A side view opened from a conversation is handed whatever was already selected under this
+    // panel's namespace — possibly by another panel, possibly by an earlier opening. Preferring it
+    // over the hash means the reader returns to the machine they were last looking at rather than to
+    // whichever one happens to sort first.
+    //
+    // `onSessionContext` RATHER THAN `sessionContext()`: the host's message may not have arrived by
+    // the time this runs, and the getter would return null for a value that arrives a millisecond
+    // later. The callback fires immediately when a value is already known and again on every change,
+    // which is the only shape that has no race.
+    //
+    // IT DOES NOT OVERRIDE AN EXPLICIT DEEP LINK: a URL that names a sandbox is a result about THAT
+    // sandbox, and a stale selection must not win over it.
+    const stopScope = onSessionContext(ctx => {
+      const scoped = ctx.selections['sandbox'] ?? ''
+      if (scoped === '' || sbName !== '') return
+      sbName = scoped
+      void refreshJobs()
+      void refreshDesktop(scoped)
+    })
+
     // The hash decided what opens: a result about one job should land ON it, not on a picker.
     void refreshList().then(() => {
       if (sbName !== '') {
         void refreshJobs()
         void refreshDesktop(sbName)
+        // Announce it, so a second view opened later starts on the same machine.
+        setSelection('sandbox', sbName)
       }
     })
     const listTimer = setInterval(() => void refreshList(), LIST_MS)
@@ -202,6 +233,7 @@
     return () => {
       clearInterval(listTimer)
       clearInterval(jobTimer)
+      stopScope()
       // A STREAM OUTLIVES THE PAGE OTHERWISE: the browser closes it when the document goes, which is
       // later than when the reader left — and the worker keeps sending until then.
       stopStream()

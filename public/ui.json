@@ -4,5 +4,17 @@
     "en": "Machines the agent can drive: shell, files, jobs, and their screens.",
     "zh": "agent 可操作的机器：命令行、文件、任务，以及实时画面。"
   },
-  "icon": "/icon.svg"
+  "icon": "/icon.svg",
+  "contributes": {
+    "session_views": [
+      {
+        "id": "sandbox",
+        "route": "/",
+        "title": "Sandbox",
+        "menu_label": "Sandbox",
+        "selection_namespace": "sandbox"
+      }
+    ],
+    "proxies": ["desktop"]
+  }
 }
